@@ -9,13 +9,14 @@ const PORT = process.env.PORT || 3001;
 const gigRoutes = require("./routes/gigRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 
-app.use(cors());
 app.use(
     cors({
         origin: "*", // Allow all origins for simplicity, adjust as needed
         methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
     })
 );
+app.options("*", cors());
+
 app.use(express.json());
 
 app.use("/api/gigs", gigRoutes);
