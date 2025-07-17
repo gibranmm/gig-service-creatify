@@ -92,8 +92,10 @@ exports.updateGig = (req, res) => {
   const gigId = req.params.id;
   const { title, description, price, delivery_time, category_id } =
     req.body;
-  const image = req.file ? req.file.filename : null;
-  const imagePath = `https://gig-service-creatify-production.up.railway.app/uploads/${image}`;
+  const imageFiles = req.files;
+  const imagePaths = imageFiles.map(file =>
+    `https://gig-service-creatify-production.up.railway.app/uploads/${file.filename}`
+  );
 
   const sql = `
     UPDATE gigs
@@ -103,7 +105,7 @@ exports.updateGig = (req, res) => {
 
   db.query(
     sql,
-    [title, description, price, delivery_time, imagePath, category_id, gigId],
+    [title, description, price, delivery_time, imagePaths, category_id, gigId],
     (err, result) => {
       if (err) return res.status(500).json({ error: err.message });
 
