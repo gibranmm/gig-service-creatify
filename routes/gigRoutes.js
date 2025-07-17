@@ -6,8 +6,8 @@ const uploadImage = require("../middlewares/uploadImage");
 
 router.get("/", controller.getAllGigs);
 router.get("/:id", controller.getGigById);
-router.post("/",   uploadImage.single("image"), controller.createGig);
-router.patch("/:id", uploadImage.single("image"), controller.updateGig);
+router.post("/",   uploadImage.array("image"), controller.createGig);
+router.patch("/:id", uploadImage.array("image"), controller.updateGig);
 router.delete("/:id", controller.deleteGig);
 
 // 🔹 Upload gambar (max 5)
