@@ -95,35 +95,50 @@ exports.createGig = (req, res) => {
 // Update a gig
 exports.updateGig = (req, res) => {
   const gigId = req.params.id;
-  const { title, description, price, delivery_time, category_id } =
-    req.body;
-  const imageFiles = req.files;
+  const { title, description, price, delivery_time, category_id } = req.body;
+  const imageFiles = req.files || []; // antisipasi jika tidak upload file
+
+  // Path gambar baru
   const imagePaths = imageFiles.map(file =>
     `https://gig-service-creatify-production.up.railway.app/uploads/${file.filename}`
   );
 
-  const imagesJson = JSON.stringify(imagePaths);
+  // 1) Ambil data gig lama dulu
+  const getGigSql = "SELECT image FROM gigs WHERE id = ?";
+  db.query(getGigSql, [gigId], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (results.length === 0) return res.status(404).json({ message: "Gig not found" });
 
-  const sql = `
-    UPDATE gigs
-    SET title = ?, description = ?, price = ?, delivery_time = ?, image = ?, category_id = ?
-    WHERE id = ?
-  `;
-
-  db.query(
-    sql,
-    [title, description, price, delivery_time, imagesJson, category_id, gigId],
-    (err, result) => {
-      if (err) return res.status(500).json({ error: err.message });
-
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ message: "Gig not found" });
-      }
-
-      res.json({ message: "Gig updated" });
+    // 2) Parse gambar lama
+    let oldImages = [];
+    try {
+      oldImages = JSON.parse(results[0].image) || [];
+    } catch (e) {
+      console.error('Failed to parse old images JSON:', e);
     }
-  );
+
+    // 3) Gabungkan
+    const combinedImages = [...oldImages, ...imagePaths];
+    const imagesJson = JSON.stringify(combinedImages);
+
+    // 4) Update ke DB
+    const updateSql = `
+      UPDATE gigs
+      SET title = ?, description = ?, price = ?, delivery_time = ?, image = ?, category_id = ?
+      WHERE id = ?
+    `;
+    db.query(
+      updateSql,
+      [title, description, price, delivery_time, imagesJson, category_id, gigId],
+      (updateErr, result) => {
+        if (updateErr) return res.status(500).json({ error: updateErr.message });
+
+        res.json({ message: "Gig updated", images: combinedImages });
+      }
+    );
+  });
 };
+
 
 // Delete a gig
 exports.deleteGig = (req, res) => {
