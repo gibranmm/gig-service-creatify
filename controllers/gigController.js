@@ -10,10 +10,15 @@ exports.getAllGigs = (req, res) => {
     ORDER BY g.id DESC
   `;
 
-  db.query(sql, (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(results);
-  });
+  try {
+    db.query(sql, (err, results) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(results);
+    });
+  } catch (error) {
+    console.error("Error fetching gigs:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 };
 
 // Get single gig by ID
@@ -97,6 +102,8 @@ exports.updateGig = (req, res) => {
     `https://gig-service-creatify-production.up.railway.app/uploads/${file.filename}`
   );
 
+  const imagesJson = JSON.stringify(imagePaths);
+
   const sql = `
     UPDATE gigs
     SET title = ?, description = ?, price = ?, delivery_time = ?, image = ?, category_id = ?
@@ -105,7 +112,7 @@ exports.updateGig = (req, res) => {
 
   db.query(
     sql,
-    [title, description, price, delivery_time, imagePaths, category_id, gigId],
+    [title, description, price, delivery_time, imagesJson, category_id, gigId],
     (err, result) => {
       if (err) return res.status(500).json({ error: err.message });
 
