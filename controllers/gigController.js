@@ -1,5 +1,4 @@
 const db = require("../config/db");
-const path = require("path");
 
 // Get all gigs
 exports.getAllGigs = (req, res) => {
@@ -9,16 +8,17 @@ exports.getAllGigs = (req, res) => {
     LEFT JOIN categories c ON g.category_id = c.id
     ORDER BY g.id DESC
   `;
+  db.query(sql, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
 
-  try {
-    db.query(sql, (err, results) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json(results);
+    const gigs = results.map(row => {
+      let images = [];
+      try { images = JSON.parse(row.image) || []; } catch (e) {}
+      return { ...row, images };
     });
-  } catch (error) {
-    console.error("Error fetching gigs:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
+
+    res.json(gigs);
+  });
 };
 
 // Get single gig by ID
@@ -31,13 +31,14 @@ exports.getGigById = (req, res) => {
     LEFT JOIN categories c ON g.category_id = c.id
     WHERE g.id = ?
   `;
-
   db.query(sql, [gigId], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
-    if (rows.length === 0)
-      return res.status(404).json({ message: "Gig not found" });
+    if (rows.length === 0) return res.status(404).json({ message: "Gig not found" });
 
-    res.json(rows[0]);
+    let images = [];
+    try { images = JSON.parse(rows[0].image) || []; } catch (e) {}
+
+    res.json({ ...rows[0], images });
   });
 };
 
@@ -52,11 +53,11 @@ exports.createGig = (req, res) => {
     price,
     delivery_time,
   } = req.body;
-  const imageFiles = req.files;
+  const imageFiles = req.files || [];
+
   const imagePaths = imageFiles.map(file =>
     `https://gig-service-creatify-production.up.railway.app/uploads/${file.filename}`
   );
-
   const imagesJson = JSON.stringify(imagePaths);
 
   if (!user_id || !user_name || !title || !price) {
@@ -70,7 +71,6 @@ exports.createGig = (req, res) => {
       user_id, user_name, category_id, title, slug, description, price, delivery_time, image
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
-
   db.query(
     sql,
     [
@@ -87,41 +87,32 @@ exports.createGig = (req, res) => {
     (err, result) => {
       if (err) return res.status(500).json({ error: err.message });
 
-      res.status(201).json({ message: "Gig created", id: result.insertId });
+      res.status(201).json({ message: "Gig created", id: result.insertId, images: imagePaths });
     }
   );
 };
 
-// Update a gig
+// Update a gig (gabung gambar lama + baru)
 exports.updateGig = (req, res) => {
   const gigId = req.params.id;
   const { title, description, price, delivery_time, category_id } = req.body;
-  const imageFiles = req.files || []; // antisipasi jika tidak upload file
+  const imageFiles = req.files || [];
 
-  // Path gambar baru
-  const imagePaths = imageFiles.map(file =>
+  const newImagePaths = imageFiles.map(file =>
     `https://gig-service-creatify-production.up.railway.app/uploads/${file.filename}`
   );
 
-  // 1) Ambil data gig lama dulu
   const getGigSql = "SELECT image FROM gigs WHERE id = ?";
   db.query(getGigSql, [gigId], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     if (results.length === 0) return res.status(404).json({ message: "Gig not found" });
 
-    // 2) Parse gambar lama
     let oldImages = [];
-    try {
-      oldImages = JSON.parse(results[0].image) || [];
-    } catch (e) {
-      console.error('Failed to parse old images JSON:', e);
-    }
+    try { oldImages = JSON.parse(results[0].image) || []; } catch (e) {}
 
-    // 3) Gabungkan
-    const combinedImages = [...oldImages, ...imagePaths];
+    const combinedImages = [...oldImages, ...newImagePaths];
     const imagesJson = JSON.stringify(combinedImages);
 
-    // 4) Update ke DB
     const updateSql = `
       UPDATE gigs
       SET title = ?, description = ?, price = ?, delivery_time = ?, image = ?, category_id = ?
@@ -132,13 +123,11 @@ exports.updateGig = (req, res) => {
       [title, description, price, delivery_time, imagesJson, category_id, gigId],
       (updateErr, result) => {
         if (updateErr) return res.status(500).json({ error: updateErr.message });
-
         res.json({ message: "Gig updated", images: combinedImages });
       }
     );
   });
 };
-
 
 // Delete a gig
 exports.deleteGig = (req, res) => {
@@ -146,70 +135,8 @@ exports.deleteGig = (req, res) => {
 
   db.query("DELETE FROM gigs WHERE id = ?", [gigId], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Gig not found" });
-    }
+    if (result.affectedRows === 0) return res.status(404).json({ message: "Gig not found" });
 
     res.json({ message: "Gig deleted" });
-  });
-};
-
-// Get all images for a gig
-exports.getGigImages = (req, res) => {
-  const gigId = req.params.id;
-
-  const sql = "SELECT * FROM gig_images WHERE gig_id = ?";
-  db.query(sql, [gigId], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-
-    // Optionally map full URLs
-    const mapped = rows.map((img) => ({
-      ...img,
-      url: `${req.protocol}://${req.get("host")}/uploads/${img.image_path}`,
-    }));
-
-    res.json(mapped);
-  });
-};
-
-// Upload images for a gig
-// exports.uploadGigImages = (files) => {
-//   const gigId = req.params.id;
-//   const files = req.files;
-
-//   if (!files || files.length === 0) {
-//     return res.status(400).json({ error: "No images uploaded" });
-//   }
-
-//   const imagePaths = files.map((file) => file.filename);
-//   const values = imagePaths.map((img) => [gigId, img]);
-
-//   const sql = "INSERT INTO gig_images (gig_id, image_path) VALUES ?";
-
-//   db.query(sql, [values], (err, result) => {
-//     if (err) return res.status(500).json({ error: err.message });
-
-//     res.status(201).json({
-//       message: "Images uploaded",
-//       uploaded: imagePaths,
-//       inserted: result.affectedRows,
-//     });
-//   });
-// };
-
-// Delete a single image
-exports.deleteGigImage = (req, res) => {
-  const imageId = req.params.imageId;
-
-  const sql = "DELETE FROM gig_images WHERE id = ?";
-  db.query(sql, [imageId], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Image not found" });
-    }
-
-    res.json({ message: "Image deleted" });
   });
 };
