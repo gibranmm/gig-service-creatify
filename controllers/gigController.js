@@ -48,6 +48,7 @@ exports.createGig = (req, res) => {
     delivery_time,
     image,
   } = req.body;
+  const imagePath = image ? `https://gig-service-creatify-production.up.railway.app/uploads/${image}` : null;
 
   if (!user_id || !user_name || !title || !price) {
     return res.status(400).json({ error: "Missing required fields" });
@@ -72,7 +73,7 @@ exports.createGig = (req, res) => {
       description,
       price,
       delivery_time,
-      image,
+      imagePath,
     ],
     (err, result) => {
       if (err) return res.status(500).json({ error: err.message });
@@ -143,29 +144,29 @@ exports.getGigImages = (req, res) => {
 };
 
 // Upload images for a gig
-exports.uploadGigImages = (req, res) => {
-  const gigId = req.params.id;
-  const files = req.files;
+// exports.uploadGigImages = (files) => {
+//   const gigId = req.params.id;
+//   const files = req.files;
 
-  if (!files || files.length === 0) {
-    return res.status(400).json({ error: "No images uploaded" });
-  }
+//   if (!files || files.length === 0) {
+//     return res.status(400).json({ error: "No images uploaded" });
+//   }
 
-  const imagePaths = files.map((file) => file.filename);
-  const values = imagePaths.map((img) => [gigId, img]);
+//   const imagePaths = files.map((file) => file.filename);
+//   const values = imagePaths.map((img) => [gigId, img]);
 
-  const sql = "INSERT INTO gig_images (gig_id, image_path) VALUES ?";
+//   const sql = "INSERT INTO gig_images (gig_id, image_path) VALUES ?";
 
-  db.query(sql, [values], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
+//   db.query(sql, [values], (err, result) => {
+//     if (err) return res.status(500).json({ error: err.message });
 
-    res.status(201).json({
-      message: "Images uploaded",
-      uploaded: imagePaths,
-      inserted: result.affectedRows,
-    });
-  });
-};
+//     res.status(201).json({
+//       message: "Images uploaded",
+//       uploaded: imagePaths,
+//       inserted: result.affectedRows,
+//     });
+//   });
+// };
 
 // Delete a single image
 exports.deleteGigImage = (req, res) => {
