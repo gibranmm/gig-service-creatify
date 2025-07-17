@@ -86,8 +86,9 @@ exports.createGig = (req, res) => {
 // Update a gig
 exports.updateGig = (req, res) => {
   const gigId = req.params.id;
-  const { title, description, price, delivery_time, image, category_id } =
+  const { title, description, price, delivery_time, category_id } =
     req.body;
+  const image = req.file ? req.file.filename : null;
 
   const sql = `
     UPDATE gigs
