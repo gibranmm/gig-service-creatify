@@ -2,11 +2,11 @@ const express = require("express");
 const router = express.Router();
 const controller = require("../controllers/gigController");
 const upload = require("../middlewares/upload"); // ⬅️ pakai middleware yang baru
-const {uploadImage} = require("../middlewares/uploadImage");
+const uploadImage = require("../middlewares/uploadImage");
 
 router.get("/", controller.getAllGigs);
 router.get("/:id", controller.getGigById);
-router.post("/",   uploadImage.single("image", 5), controller.createGig);
+router.post("/",   uploadImage.single("image"), controller.createGig);
 router.put("/:id", controller.updateGig);
 router.delete("/:id", controller.deleteGig);
 

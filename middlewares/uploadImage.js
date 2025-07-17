@@ -1,5 +1,5 @@
-import multer from "multer";
-import path from "path";
+const multer = require("multer");
+const path = require("path");
 
 const storage = multer.diskStorage({
     destination: "uploads/", // Folder tempat menyimpan gambar
@@ -9,7 +9,7 @@ const storage = multer.diskStorage({
     },
 });
 
-export const uploadImage = multer({
+const uploadImage = multer({
     storage,
     fileFilter: (req, file, cb) => {
         const allowedTypes = /jpeg|jpg|png/;
@@ -21,3 +21,5 @@ export const uploadImage = multer({
         }
     },
 });
+
+module.exports = uploadImage;

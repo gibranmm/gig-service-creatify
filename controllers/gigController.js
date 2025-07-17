@@ -46,9 +46,9 @@ exports.createGig = (req, res) => {
     description,
     price,
     delivery_time,
-    image,
   } = req.body;
-  const imagePath = image ? `https://gig-service-creatify-production.up.railway.app/uploads/${image}` : null;
+  const image = req.file.filename;
+  const imagePath = `https://gig-service-creatify-production.up.railway.app/uploads/${image}`;
 
   if (!user_id || !user_name || !title || !price) {
     return res.status(400).json({ error: "Missing required fields" });
