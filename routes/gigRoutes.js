@@ -6,7 +6,7 @@ const {uploadImage} = require("../middlewares/uploadImage");
 
 router.get("/", controller.getAllGigs);
 router.get("/:id", controller.getGigById);
-router.post("/",   uploadImage.single("images", 5), controller.createGig);
+router.post("/",   uploadImage.single("image", 5), controller.createGig);
 router.put("/:id", controller.updateGig);
 router.delete("/:id", controller.deleteGig);
 
